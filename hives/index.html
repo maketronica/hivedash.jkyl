@@ -1,0 +1,12 @@
+---
+layout: default
+title: The Hives
+---
+<body>
+<!-- load the d3.js library -->    
+<div id="chartone"></div>
+<script>
+  var chartone = new Chart("div#chartone", "/hives/data.csv");
+  chartone.draw();
+</script>
+</body>
