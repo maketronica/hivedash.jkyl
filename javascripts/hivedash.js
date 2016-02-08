@@ -11,7 +11,7 @@ function drawChart() {
       height = 270 - margin.top - margin.bottom;
 
   // Parse the date / time
-  var parseDate = d3.time.format("%d-%b-%y").parse;
+  var parseDate = d3.time.format("%Y-%m-%d %H:%M:%S UTC").parse;
 
   // Set the ranges
   var x = d3.time.scale().range([0, width]);
@@ -26,8 +26,8 @@ function drawChart() {
 
   // Define the line
   var valueline = d3.svg.line()
-      .x(function(d) { return x(d.date); })
-      .y(function(d) { return y(d.close); });
+      .x(function(d) { return x(d.timestamp); })
+      .y(function(d) { return y(d.temperature); });
 
   
   // Adds the svg canvas
@@ -40,21 +40,27 @@ function drawChart() {
                 "translate(" + margin.left + "," + margin.top + ")");
 
   // Get the data
-console.log("Getting: " + this.data_url);
   d3.csv(this.data_url, function(error, data) {
       data.forEach(function(d) {
-          d.date = parseDate(d.date);
-          d.close = +d.close;
+        console.log(d);
+          d.timestamp = parseDate(d.timestamp);
+          d.temperature = +d.temperature;
+        console.log(d);
       });
 
       // Scale the range of the data
-      x.domain(d3.extent(data, function(d) { return d.date; }));
-      y.domain([0, d3.max(data, function(d) { return d.close; })]);
+      x.domain(d3.extent(data, function(d) { return d.timestamp; }));
+      y.domain([0, d3.max(data, function(d) { return d.temperature; })]);
 
-      // Add the valueline path.
-      svg.append("path")
+      var dataNest = d3.nest()
+        .key(function(d) { return d.probeid; })
+        .entries(data)
+
+      dataNest.forEach(function(d) {
+        svg.append("path")
           .attr("class", "line")
-          .attr("d", valueline(data));
+          .attr("d", valueline(d.values));
+      });
 
       // Add the X Axis
       svg.append("g")
