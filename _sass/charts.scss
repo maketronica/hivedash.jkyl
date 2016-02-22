@@ -5,6 +5,12 @@ path {
     stroke-width: 2;
     fill: none;
 }
+path.important { stroke: red; }
+
+#temperature-chart {
+  width: 800px;
+  height: 400px;
+}
 
 .axis path,
 .axis line {

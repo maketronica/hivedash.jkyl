@@ -1,0 +1,13 @@
+---
+layout: default
+title: HiveNG
+---
+<div ng-app="chartApp" ng-controller="TempChartController">
+  <h1>Temperatures</h1>
+  <div linear-chart
+       id='temperature-chart'
+       class='default-chart'
+       chart-data-url="/data/newtemp.csv"
+       padding='30'
+       path-class='important'></div>
+</div>
