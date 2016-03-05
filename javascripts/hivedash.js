@@ -16,22 +16,42 @@ function linearChartDirective($window) {
     self.attrs = attrs;
     var columnsToChart = self.attrs.chartColumnNames.split(',')
       .map(function(x) { return $.trim(x) });
+    var nestsToChart = self.attrs.chartNestNames.split(',')
+      .map(function(x) { return $.trim(x) });
+    var nestIdentifier = self.attrs.nestNamesColumnName
     rawSvg().attr("width", width());
     rawSvg().attr("height", height());
 
     var scale = d3.scale.ordinal()
 
     d3.csv(self.attrs.chartDataUrl, function(error, data) {
-      scale.domain(d3.keys(data[0]).filter(function(key) {
+      dataNest = d3.nest()
+        .key(function(d) { return d[nestIdentifier] })
+        .entries(data)
+
+      dataColumns = d3.keys(data[0]).filter(function(key) {
         return ($.inArray(key, columnsToChart) > -1)
-      }));
+      })
+
+      nestedColumns = []
+      dataNest.forEach(function(nest) {
+        if ($.inArray(nest.key, nestsToChart) > -1) {
+          dataColumns.forEach(function(column) {
+            nestedColumns.push([nest.key, column]);
+          })  
+        }
+      })
+      scale.domain(nestedColumns);
 
       linesToPlot = scale.domain().map(function(key, index) {
+        filtered_data = data.filter(function(d) {
+          return d[nestIdentifier] == key[0]
+        });
         return { 
           counter: index+1,
-          name: key,
-          values: data.map(function(d) {
-            var newd =  { x: parseDate(d.timestamp), y: +d[key] };
+          name: key.join('_'),
+          values: filtered_data.map(function(d) {
+            var newd =  { x: parseDate(d.timestamp), y: +d[key[1]] };
             return newd;
           })
         };
@@ -98,7 +118,7 @@ function linearChartDirective($window) {
   var yScale = function() {
     maxY = d3.max(linesToPlot, function (line) {
       return d3.max(line.values, function(d) {
-        return d.y;
+        return d.y*1.1;
       })
     })
     return d3.scale.linear()
