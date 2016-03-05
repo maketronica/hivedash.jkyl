@@ -21,16 +21,17 @@ function linearChartDirective($window) {
     rawSvg().attr("height", height());
 
     var scale = d3.scale.ordinal()
-    var colors = ["#FF0000", "#FFFF00", "#000000", "#FF00FF"];
-    scale.range(colors);
 
     d3.csv(self.attrs.chartDataUrl, function(error, data) {
       scale.domain(d3.keys(data[0]).filter(function(key) {
         return ($.inArray(key, self.columnsToChart) > -1)
       }));
 
+      counter = 0;
       lines = scale.domain().map(function(key) {
+        counter += 1;
         return { 
+          counter: counter,
           name: key,
           values: data.map(function(d) {
             var newd =  { x: parseDate(d.timestamp), y: +d[key] };
@@ -55,13 +56,25 @@ function linearChartDirective($window) {
          .attr("class", "line");
 
        foo.append("path")
-         .attr("class", function(d) { return 'line ' + d.name })
+         .attr("class", function(d) {
+           return ['line',  d.name, ordclass(d.counter)].join(' ');
+         })
          .attr("d", function(d) { return dataLine()(d.values); })
          .style("stroke", function(d) { return scale(d.name); });
 
     });
   }
   
+  var ordclass = function(n) {
+    return 'ord' + ordinal(n)
+  }
+
+  var ordinal = function(n) {
+    var s=["th","st","nd","rd"],
+        v=n%100;
+    return n+(s[(v-20)%10]||s[v]||s[0]);
+  }
+
   self.dataLine = function() {
     return d3.svg.line()
              .x(function (d) { return xScale()(d.x); })
