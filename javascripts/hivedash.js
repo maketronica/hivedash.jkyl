@@ -82,7 +82,7 @@ function linearChartDirective($window) {
     });
   }
   
-  var parseDate = d3.time.format("%Y-%m-%d %H:%M:%S UTC").parse;
+  var parseDate = d3.time.format.utc("%Y-%m-%d %H:%M:%S UTC").parse;
 
   var ordclass = function(n) {
     return 'ord' + ordinal(n)
