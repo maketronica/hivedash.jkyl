@@ -8,24 +8,54 @@ function TempChartController() {
 app.directive('linearChart', ['$window', linearChartDirective]);
 function linearChartDirective($window) {
   self = this;
-  var dataToPlot = [];
+  var linesToPlot = [];
   
   self.link = function(scope, elem, attrs) {
     self.scope = scope;
     self.elem = elem;
     self.attrs = attrs;
-    var parseDate = d3.time.format("%Y-%m-%d %H:%M:%S UTC").parse;
+    var columnsToChart = self.attrs.chartColumnNames.split(',')
+      .map(function(x) { return $.trim(x) });
+    var nestsToChart = self.attrs.chartNestNames.split(',')
+      .map(function(x) { return $.trim(x) });
+    var nestIdentifier = self.attrs.nestNamesColumnName
     rawSvg().attr("width", width());
     rawSvg().attr("height", height());
 
+    var scale = d3.scale.ordinal()
+
     d3.csv(self.attrs.chartDataUrl, function(error, data) {
-      data.forEach(function(d) {
-          d.x = parseDate(d.timestamp);
-          d.y = +d[self.attrs.chartColumnName];
-          console.log(d.x);
+      dataNest = d3.nest()
+        .key(function(d) { return d[nestIdentifier] })
+        .entries(data)
+
+      dataColumns = d3.keys(data[0]).filter(function(key) {
+        return ($.inArray(key, columnsToChart) > -1)
       })
-      
-      dataToPlot = data;
+
+      nestedColumns = []
+      dataNest.forEach(function(nest) {
+        if ($.inArray(nest.key, nestsToChart) > -1) {
+          dataColumns.forEach(function(column) {
+            nestedColumns.push([nest.key, column]);
+          })  
+        }
+      })
+      scale.domain(nestedColumns);
+
+      linesToPlot = scale.domain().map(function(key, index) {
+        filtered_data = data.filter(function(d) {
+          return d[nestIdentifier] == key[0]
+        });
+        return { 
+          counter: index+1,
+          name: key.join('_'),
+          values: filtered_data.map(function(d) {
+            var newd =  { x: parseDate(d.timestamp), y: +d[key[1]] };
+            return newd;
+          })
+        };
+      });
 
       svg().append("svg:g")
         .attr("class", "x axis")
@@ -37,70 +67,90 @@ function linearChartDirective($window) {
         .attr("transform", "translate("+padding()+",0)")
         .call(yAxisGen());
         
-      svg().append("svg:path")
-        .attr({
-          d: dataLine()(dataToPlot),
-          "class": pathClass()
-        });
+       var lineSet = svg().selectAll(".line")
+         .data(linesToPlot)
+         .enter().append("g")
+         .attr("class", "line");
+
+       lineSet.append("svg:path")
+         .attr("class", function(d) {
+           return ['line',  d.name, ordclass(d.counter)].join(' ');
+         })
+         .attr("d", function(d) { return dataLine()(d.values); })
+         .style("stroke", function(d) { return scale(d.name); });
+
     });
   }
   
-  self.dataLine = function() {
+  var parseDate = d3.time.format("%Y-%m-%d %H:%M:%S UTC").parse;
+
+  var ordclass = function(n) {
+    return 'ord' + ordinal(n)
+  }
+
+  var ordinal = function(n) {
+    var s=["th","st","nd","rd"],
+        v=n%100;
+    return n+(s[(v-20)%10]||s[v]||s[0]);
+  }
+
+  var dataLine = function() {
     return d3.svg.line()
              .x(function (d) { return xScale()(d.x); })
              .y(function (d) { return yScale()(d.y); })
              .interpolate("basis");
   }
   
-  self.yAxisGen = function() {
+  var yAxisGen = function() {
     return d3.svg.axis()
              .scale(yScale())
              .orient("left")
              .ticks(5);    
   }
   
-  self.xAxisGen = function() {
+   var xAxisGen = function() {
     return d3.svg.axis()
              .scale(xScale())
              .orient("bottom")
              .ticks(8);
   }
   
-  self.yScale = function() {
+  var yScale = function() {
+    maxY = d3.max(linesToPlot, function (line) {
+      return d3.max(line.values, function(d) {
+        return d.y*1.1;
+      })
+    })
     return d3.scale.linear()
-             .domain([0, d3.max(dataToPlot, function (d) {
-               return d.y;
-             })])
+             .domain([0, maxY])
              .range([height() - padding(), 0]);
   }
   
-  self.xScale = function() {
+   var xScale = function() {
+    minX = d3.min(linesToPlot, function(line) { return line.values[0].x });
+    maxX = d3.max(linesToPlot, function(line) { return line.values[line.values.length-1].x });
     return d3.time.scale()
-      .domain([dataToPlot[0].x, dataToPlot[dataToPlot.length-1].x])
+      .domain([minX, maxX])
       .range([0 + padding(), width()]);
   }
   
-  self.svg = function() {
+   var svg = function() {
     return d3.select(rawSvg()[0]);
   }
   
-  self.rawSvg = function() {
+  var rawSvg = function() {
     return self.elem.find('svg');
   }
   
-  self.height = function() {
+  var height = function() {
     return self.elem[0].clientHeight
   }
   
-  self.width = function() {
+  var width = function() {
     return self.elem[0].clientWidth;
   }
     
-  self.pathClass = function() {
-    return self.attrs.pathClass;
-  }
-  
-  self.padding = function() {
+  var padding = function() {
     return eval(self.attrs.padding);
   }
   

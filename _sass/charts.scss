@@ -5,7 +5,13 @@ path {
     stroke-width: 2;
     fill: none;
 }
-path.important { stroke: red; }
+path.ord1st { stroke: red; }
+path.ord2nd { stroke: orange; }
+path.ord3rd { stroke: yellow; }
+path.ord4th { stroke: green; }
+path.ord5th { stroke: blue; }
+path.ord6th { stroke: indigo; }
+path.ord7th { stroke: violet; }
 
 #temperature-chart {
   width: 800px;
