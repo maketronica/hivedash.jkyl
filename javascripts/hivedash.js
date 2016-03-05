@@ -8,7 +8,7 @@ function TempChartController() {
 app.directive('linearChart', ['$window', linearChartDirective]);
 function linearChartDirective($window) {
   self = this;
-  var dataToPlot = [];
+  var lines = [];
   
   self.link = function(scope, elem, attrs) {
     self.scope = scope;
@@ -18,14 +18,24 @@ function linearChartDirective($window) {
     rawSvg().attr("width", width());
     rawSvg().attr("height", height());
 
+    var scale = d3.scale.ordinal()
+    var colors = ["#FF0000", "#FFFF00", "#000000", "#FF00FF"];
+    scale.range(colors);
+
     d3.csv(self.attrs.chartDataUrl, function(error, data) {
-      data.forEach(function(d) {
-          d.x = parseDate(d.timestamp);
-          d.y = +d[self.attrs.chartColumnName];
-          console.log(d.x);
-      })
-      
-      dataToPlot = data;
+      scale.domain(d3.keys(data[0]).filter(function(key) {
+        return key !== "timestamp" && key !== "probeid";
+      }));
+
+      lines = scale.domain().map(function(key) {
+        return { 
+          name: key,
+          values: data.map(function(d) {
+            var newd =  { x: parseDate(d.timestamp), y: +d[key] };
+            return newd;
+          })
+        };
+      });
 
       svg().append("svg:g")
         .attr("class", "x axis")
@@ -37,11 +47,16 @@ function linearChartDirective($window) {
         .attr("transform", "translate("+padding()+",0)")
         .call(yAxisGen());
         
-      svg().append("svg:path")
-        .attr({
-          d: dataLine()(dataToPlot),
-          "class": pathClass()
-        });
+       var foo = svg().selectAll(".line")
+         .data(lines)
+         .enter().append("g")
+         .attr("class", "line");
+
+       foo.append("path")
+         .attr("class", "line")
+         .attr("d", function(d) { return dataLine()(d.values); })
+         .style("stroke", function(d) { return scale(d.name); });
+
     });
   }
   
@@ -67,16 +82,21 @@ function linearChartDirective($window) {
   }
   
   self.yScale = function() {
+    maxY = d3.max(lines, function (line) {
+      return d3.max(line.values, function(d) {
+        return d.y;
+      })
+    })
     return d3.scale.linear()
-             .domain([0, d3.max(dataToPlot, function (d) {
-               return d.y;
-             })])
+             .domain([0, maxY])
              .range([height() - padding(), 0]);
   }
   
   self.xScale = function() {
+    minX = d3.min(lines, function(line) { return line.values[0].x });
+    maxX = d3.max(lines, function(line) { return line.values[line.values.length-1].x });
     return d3.time.scale()
-      .domain([dataToPlot[0].x, dataToPlot[dataToPlot.length-1].x])
+      .domain([minX, maxX])
       .range([0 + padding(), width()]);
   }
   
