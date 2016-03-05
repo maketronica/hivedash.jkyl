@@ -14,6 +14,8 @@ function linearChartDirective($window) {
     self.scope = scope;
     self.elem = elem;
     self.attrs = attrs;
+    self.columnsToChart = self.attrs.chartColumnNames.split(',')
+      .map(function(x) { return $.trim(x) });
     var parseDate = d3.time.format("%Y-%m-%d %H:%M:%S UTC").parse;
     rawSvg().attr("width", width());
     rawSvg().attr("height", height());
@@ -24,7 +26,7 @@ function linearChartDirective($window) {
 
     d3.csv(self.attrs.chartDataUrl, function(error, data) {
       scale.domain(d3.keys(data[0]).filter(function(key) {
-        return key !== "timestamp" && key !== "probeid";
+        return ($.inArray(key, self.columnsToChart) > -1)
       }));
 
       lines = scale.domain().map(function(key) {
@@ -53,7 +55,7 @@ function linearChartDirective($window) {
          .attr("class", "line");
 
        foo.append("path")
-         .attr("class", "line")
+         .attr("class", function(d) { return 'line ' + d.name })
          .attr("d", function(d) { return dataLine()(d.values); })
          .style("stroke", function(d) { return scale(d.name); });
 
